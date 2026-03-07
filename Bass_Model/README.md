@@ -1,5 +1,5 @@
 # Bass Diffusion Model: Nvidia DGX Spark
-**Technology Diffusion Analysis · 2025**
+**Technology Diffusion Analysis**
 
 ---
 
