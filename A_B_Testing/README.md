@@ -46,6 +46,20 @@ Cumulative reward and regret for each algorithm are printed to the console.
 - Exploration happens naturally through posterior uncertainty, no tuning needed
 - Generally converges to the optimal bandit faster than Epsilon-Greedy
 
+## Bonus: UCB1 (Upper Confidence Bound)
+
+As an improved implementation, UCB1 is included as a third algorithm. UCB1 selects the arm that maximizes:
+
+score = estimated_mean + sqrt(2 * log(N) / n_j)
+
+where N is the total number of trials and n_j is the number of times arm j has been pulled. This formula is derived from Hoeffding's inequality, providing a mathematically justified upper bound on each arm's true mean.
+
+**Why UCB1 is better:**
+- No hyperparameters to tune (unlike Epsilon-Greedy's epsilon or decay schedule)
+- Deterministic selection rule (unlike Thompson Sampling's random sampling)
+- Exploration is driven by uncertainty, not randomness — arms with fewer pulls get higher scores automatically
+- Achieves the lowest cumulative regret in our experiments
+
 ## Dependencies
 
 - numpy

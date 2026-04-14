@@ -3,13 +3,15 @@
 """
 
 '''
-This module implements Epsilon-Greedy and Thompson Sampling algorithms
+This module implements Epsilon-Greedy, Thompson Sampling, and UCB1 algorithms
 for a multi-armed bandit problem with four advertisement options.
  
-Bandit: Abstract base class for bandit algorithms.
-Visualization: Handles plotting of learning curves and comparisons.
-EpsilonGreedy: Epsilon-greedy bandit with 1/t decay.
-ThompsonSampling: Thompson sampling with known precision.
+Classes:
+    Bandit: Abstract base class for bandit algorithms.
+    Visualization: Handles plotting of learning curves and comparisons.
+    EpsilonGreedy: Epsilon-greedy bandit with 1/t decay.
+    ThompsonSampling: Thompson sampling with known precision.
+    UCB1: Upper Confidence Bound algorithm (Bonus Task).
 '''
 
 ############################### LOGGER
@@ -108,21 +110,24 @@ class Visualization():
         plt.savefig(f"{algorithm_name.replace(' ', '_').replace('-', '_')}_learning_curve.png")
         plt.show()
         
-    def plot2(self, rewards_eg, rewards_ts, num_trials):
+    def plot2(self, rewards_eg, rewards_ts, rewards_ucb, num_trials):
         # Compare E-greedy and thompson sampling cummulative rewards
         # Compare E-greedy and thompson sampling cummulative regrets
         cum_rewards_eg = np.cumsum(rewards_eg)
         cum_rewards_ts = np.cumsum(rewards_ts)
+        cum_rewards_ucb = np.cumsum(rewards_ucb)
  
         best_reward = max(Bandit_Reward)
         cum_regret_eg = np.cumsum([best_reward - r for r in rewards_eg])
         cum_regret_ts = np.cumsum([best_reward - r for r in rewards_ts])
+        cum_regret_ucb = np.cumsum([best_reward - r for r in rewards_ucb])
  
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
  
         # Cumulative rewards
         axes[0].plot(cum_rewards_eg, label="Epsilon-Greedy")
         axes[0].plot(cum_rewards_ts, label="Thompson Sampling")
+        axes[0].plot(cum_rewards_ucb, label="UCB1")
         axes[0].set_xlabel("Trials")
         axes[0].set_ylabel("Cumulative Reward")
         axes[0].set_title("Cumulative Rewards Comparison")
@@ -131,6 +136,7 @@ class Visualization():
         # Cumulative regret
         axes[1].plot(cum_regret_eg, label="Epsilon-Greedy")
         axes[1].plot(cum_regret_ts, label="Thompson Sampling")
+        axes[1].plot(cum_regret_ucb, label="UCB1")
         axes[1].set_xlabel("Trials")
         axes[1].set_ylabel("Cumulative Regret")
         axes[1].set_title("Cumulative Regret Comparison")
@@ -369,13 +375,136 @@ class ThompsonSampling(Bandit):
  
         return df
     
+class UCB1(Bandit):
+    """
+    Upper Confidence Bound (UCB1) bandit algorithm (BONUS).
+ 
+    Selects the arm that maximizes: estimated_mean + sqrt(2 * log(N) / n_j),
+    where N is total trials and n_j is pulls for arm j. This is derived from
+    Hoeffding's inequality, providing a mathematically justified upper bound
+    on each arm's true mean.
+ 
+    Unlike Epsilon-Greedy, UCB1 has no hyperparameters to tune.
+    Unlike Thompson Sampling, it uses a deterministic selection rule.
+ 
+    Attributes:
+        p (float): True mean reward.
+        p_estimate (float): Estimated mean reward.
+        N (int): Number of pulls for this arm.
+    """
+ 
+    def __init__(self, p):
+        """
+        Initialize UCB1 bandit.
+ 
+        Parameters:
+            p (float): True mean reward of the bandit.
+        """
+        super().__init__(p)
+        self.p = p
+        self.p_estimate = 0.0
+        self.N = 0
+ 
+    def __repr__(self):
+        """Return string representation."""
+        return f"UCB1(p={self.p}, estimate={self.p_estimate:.4f}, N={self.N})"
+ 
+    def pull(self):
+        """
+        Pull the arm and return a reward sampled from N(p, 1).
+ 
+        Returns:
+            float: Sampled reward.
+        """
+        return np.random.randn() + self.p
+ 
+    def update(self, x):
+        """
+        Update estimated mean using incremental formula.
+ 
+        Parameters:
+            x (float): Observed reward.
+        """
+        self.N += 1
+        self.p_estimate = ((self.N - 1) * self.p_estimate + x) / self.N
+ 
+    def experiment(self, bandit_rewards, num_trials):
+        """
+        UCB1 experiment across all bandits.
+ 
+        For the first len(bandit_rewards) trials, each arm is pulled once.
+        After that, the arm with the highest UCB score is selected:
+            score_j = estimated_mean_j + sqrt(2 * log(total_trials) / n_j)
+ 
+        Parameters:
+            bandit_rewards (list): List of true mean rewards for each bandit.
+            num_trials (int): Number of trials to run.
+ 
+        Returns:
+            tuple: (list of rewards, list of bandit indices chosen)
+        """
+        bandits = [UCB1(p) for p in bandit_rewards]
+        rewards = []
+        chosen_bandits = []
+        total_pulls = 0
+ 
+        for t in range(1, num_trials + 1):
+            if t <= len(bandits):
+                # Pulls each arm once first to initialize estimates
+                idx = t - 1
+                logger.debug(f"Trial {t}: Initializing bandit {idx}")
+            else:
+                # Selects arm with highest UCB score
+                ucb_scores = [
+                    b.p_estimate + np.sqrt(2 * np.log(total_pulls) / b.N)
+                    for b in bandits
+                ]
+                idx = np.argmax(ucb_scores)
+                logger.debug(f"Trial {t}: Chose bandit {idx} (UCB scores={[f'{s:.3f}' for s in ucb_scores]})")
+ 
+            reward = bandits[idx].pull()
+            bandits[idx].update(reward)
+            total_pulls += 1
+ 
+            rewards.append(reward)
+            chosen_bandits.append(idx)
+ 
+        self._rewards = rewards
+        self._bandits = bandits
+        self._chosen = chosen_bandits
+        self._num_trials = num_trials
+ 
+        return rewards, chosen_bandits
+ 
+    def report(self):
+        """
+        Report results: store in CSV, print cumulative reward and regret.
+ 
+        Returns:
+            pd.DataFrame: DataFrame with columns [Bandit, Reward, Algorithm].
+        """
+        best_reward = max([b.p for b in self._bandits])
+        cumulative_reward = sum(self._rewards)
+        cumulative_regret = self._num_trials * best_reward - cumulative_reward
+ 
+        logger.info(f"UCB1 - Cumulative Reward: {cumulative_reward:.2f}")
+        logger.info(f"UCB1 - Cumulative Regret: {cumulative_regret:.2f}")
+ 
+        df = pd.DataFrame({
+            'Bandit': self._chosen,
+            'Reward': self._rewards,
+            'Algorithm': 'UCB1'
+        })
+ 
+        return df
+    
 def comparison():
     # think of a way to compare the performances of the two algorithms VISUALLY and 
     """
-    Compare Epsilon-Greedy and Thompson Sampling visually and numerically.
+    Compare Epsilon-Greedy, Thompson Sampling and UCB1 visually and numerically.
  
-    Runs both algorithms on the same bandit rewards, generates plots,
-    stores results in a CSV file and prints cumulative metrics.
+    Runs all three algorithms on the same bandit rewards, generates plots,
+    stores results in a CSV file, and prints cumulative metrics.
     """
     viz = Visualization()
  
@@ -393,11 +522,18 @@ def comparison():
     df_ts = ts.report()
     viz.plot1(rewards_ts, NumberOfTrials, "Thompson Sampling")
  
-    # Comparison
-    viz.plot2(rewards_eg, rewards_ts, NumberOfTrials)
+    # UCB1
+    logger.info("Starting UCB1 experiment")
+    ucb = UCB1(0)
+    rewards_ucb, chosen_ucb = ucb.experiment(Bandit_Reward, NumberOfTrials)
+    df_ucb = ucb.report()
+    viz.plot1(rewards_ucb, NumberOfTrials, "UCB1")
  
-    # Save to CSV 
-    df = pd.concat([df_eg, df_ts], ignore_index=True)
+    # Comparison 
+    viz.plot2(rewards_eg, rewards_ts, rewards_ucb, NumberOfTrials)
+ 
+    # Save to CSV
+    df = pd.concat([df_eg, df_ts, df_ucb], ignore_index=True)
     df.to_csv("bandit_rewards.csv", index=False)
     logger.info("Results saved to bandit_rewards.csv")
 
