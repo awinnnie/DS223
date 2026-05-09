@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(__file__))
 from importlib import import_module
 preprocess = import_module("02_aft_models").preprocess
 
-with open("final_model.pkl", "rb") as f:
+with open("outputs/final_model.pkl", "rb") as f:
     bundle = pickle.load(f)
 model, features = bundle["model"], bundle["features"]
 
