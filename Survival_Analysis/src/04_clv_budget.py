@@ -78,11 +78,12 @@ axes[1].barh(mc.index.astype(str), mc.values)
 axes[1].set_title("Mean CLV by customer category")
 axes[1].set_xlabel("Mean CLV ($)")
 plt.tight_layout()
-plt.savefig("clv_distribution.png", dpi=110)
+os.makedirs("outputs", exist_ok=True)
+plt.savefig("outputs/clv_distribution.png", dpi=110)
 plt.show()
 print("\nsaved clv_distribution.png")
 
 # save per-customer CLV
 seg_df[["ID", "tenure", "churn", "CLV", "churn_prob_12m"]].to_csv(
-    "clv_per_customer.csv", index=False)
-print("saved clv_per_customer.csv")
+    "outputs/clv_per_customer.csv", index=False)
+print("saved outputs/clv_per_customer.csv")

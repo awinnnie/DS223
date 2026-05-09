@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 from lifelines import KaplanMeierFitter
 
 df = pd.read_csv("data/telco.csv")
@@ -19,6 +20,7 @@ ax.set_title("Kaplan–Meier baseline")
 ax.set_xlabel("Tenure (months)")
 ax.set_ylabel("S(t)")
 plt.tight_layout()
-plt.savefig("km_baseline.png", dpi=110)
+os.makedirs("outputs", exist_ok=True)
+plt.savefig("outputs/km_baseline.png", dpi=110)
 plt.show()
 print("saved km_baseline.png")

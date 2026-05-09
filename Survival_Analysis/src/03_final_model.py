@@ -34,6 +34,6 @@ print(final.summary[["coef", "exp(coef)", "p"]].round(4))
 print(f"\nAIC: {final.AIC_:.2f}   concordance: {final.concordance_index_:.3f}")
 
 # save model + feature list
-with open("final_model.pkl", "wb") as f:
+with open("outputs/final_model.pkl", "wb") as f:
     pickle.dump({"model": final, "features": keep}, f)
 print("\nsaved final_model.pkl")

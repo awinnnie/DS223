@@ -4,6 +4,7 @@ warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 from lifelines import (
     WeibullAFTFitter, LogNormalAFTFitter, LogLogisticAFTFitter,
     GeneralizedGammaRegressionFitter,
@@ -74,7 +75,8 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(alpha=0.3)
     plt.tight_layout()
-    plt.savefig("aft_all_curves.png", dpi=110)
+    os.makedirs("outputs", exist_ok=True)
+    plt.savefig("outputs/aft_all_curves.png", dpi=110)
     plt.show()
     print("saved aft_all_curves.png")
     print("\nBest by AIC:", cmp.iloc[0]["model"])
